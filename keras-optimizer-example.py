@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import sys
 
-from comet_ml import Experiment
+from comet_ml import Experiment, Optimizer
 
 
 import keras
@@ -17,6 +17,8 @@ from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.optimizers import RMSprop
+
+API_KEY = "8wQ1ZtcTJnQnbYQ0mm36Jgesx"
 
 def main():
 
@@ -38,12 +40,27 @@ def main():
     y_train = keras.utils.to_categorical(y_train, num_classes)
     y_test = keras.utils.to_categorical(y_test, num_classes)
 
-    train(x_train,y_train,x_test,y_test)
+    opt = Optimizer(API_KEY)
+    # pcs_content = """
+    # first_layer_units integer [1,1000] [2]
+    # """
+    # opt.set_params(pcs_content)
+    opt.set_params_file("./pcs-file")
+
+    while True:
+        sug = opt.get_suggestion()
+        print("SUG", sug, sug.__dict__)
+        flu =  sug["first_layer_units"]
+        print("FLU", repr(flu))
+        score = train(x_train,y_train,x_test,y_test, 3, 120, flu)
+        print("Score", score, sug.__dict__)
+        # Reverse the score for minimization
+        sug.report_score("score", score)
 
 
-def build_model_graph(input_shape=(784,)):
+def build_model_graph(first_layer_units):
     model = Sequential()
-    model.add(Dense(128, activation='sigmoid', input_shape=(784,)))
+    model.add(Dense(first_layer_units, activation='sigmoid', input_shape=(784,)))
     model.add(Dense(128, activation='sigmoid'))
     model.add(Dense(128, activation='sigmoid'))
     model.add(Dense(10, activation='softmax'))
@@ -52,15 +69,20 @@ def build_model_graph(input_shape=(784,)):
     return model
 
 
-def train(x_train,y_train,x_test,y_test):
-    experiment = Experiment(api_key="e0PgUmwHvW9cWNJzSpsYGil1l", project_name="github-test")
+def train(x_train,y_train,x_test,y_test, epoch, batch_size, first_layer_units):
+    experiment = Experiment(api_key=API_KEY, project_name="opt-prod-III")
+
+
     experiment.log_dataset_hash(x_train)
+    experiment.log_parameter("first_layer_units", first_layer_units)
 
     # Define model
-    model = build_model_graph()
+    model = build_model_graph(first_layer_units)
 
-    model.fit(x_train, y_train, batch_size=120, epochs=20, validation_data=(x_test, y_test))
-    score = model.evaluate(x_test, y_test, verbose=0)
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch, validation_data=(x_test, y_test))
+    score = model.evaluate(x_test, y_test, verbose=0)[1]
+
+    return score
 
 if __name__ == '__main__':
     main()

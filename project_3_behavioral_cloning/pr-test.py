@@ -53,7 +53,8 @@ def build_model_graph(input_shape=(784,)):
 
 
 def train(x_train,y_train,x_test,y_test):
-    experiment = Experiment(api_key="e0PgUmwHvW9cWNJzSpsYGil1l", project_name="github-test")
+    experiment = Experiment(api_key="NimrodTheMan", project_name="nimrod-is-the-man")
+
     experiment.log_dataset_hash(x_train)
 
     # Define model
